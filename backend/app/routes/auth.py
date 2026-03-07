@@ -5,6 +5,7 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 from datetime import datetime
 import random
 import string
+from app.utils.email_service import send_otp_email as email_otp, send_welcome_email
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -15,16 +16,22 @@ def generate_otp():
     """Generate a 6-digit OTP"""
     return ''.join(random.choices(string.digits, k=6))
 
-def send_otp_email(email, otp):
+def send_otp_email(user, otp):
     """
-    Send OTP via email
-    For now, just print to console (you'll integrate SMTP later)
+    Send OTP via real SMTP email using the email service.
+    Falls back to console print if SMTP is not configured.
     """
-    print(f"\n{'='*50}")
-    print(f"OTP for {email}: {otp}")
-    print(f"{'='*50}\n")
-    # TODO: Implement actual email sending with SMTP
-    return True
+    org = Organization.query.filter_by(organization_id=user.organization_id).first()
+    org_name = org.name if org else 'Your Organization'
+
+    result = email_otp(
+        to_email  = user.email,
+        firstname = user.firstname,
+        otp       = otp,
+        mobile    = user.mobile,
+        org_name  = org_name,
+    )
+    return result['success']
 
 
 @auth_bp.route('/signup', methods=['POST'])
@@ -111,6 +118,17 @@ def signup():
         db.session.add(new_user)
         db.session.commit()
 
+        # Send welcome email
+        send_welcome_email(
+            to_email  = new_user.email,
+            firstname = new_user.firstname,
+            lastname  = new_user.lastname,
+            mobile    = new_user.mobile,
+            role      = new_user.type,
+            org_name  = org.name,
+            org_id    = org_id,
+        )
+
         # Create JWT token
         access_token = create_access_token(identity=str(new_user.id))
 
@@ -181,7 +199,7 @@ def login():
         }
 
         # Send OTP via email
-        send_otp_email(user.email, otp)
+        send_otp_email(user, otp)
 
         return jsonify({
             'success': True,
@@ -294,7 +312,7 @@ def resend_otp():
         }
 
         # Send OTP
-        send_otp_email(user.email, otp)
+        send_otp_email(user, otp)
 
         return jsonify({
             'success': True,

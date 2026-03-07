@@ -1,0 +1,82 @@
+<!-- Welcome Email Body Content -->
+<!-- Injected into base.html's {{ body_content }} slot -->
+
+<p class="greeting">Welcome to InterviewAI! 🎉</p>
+<p class="subtext">
+  Hi <strong>{{ firstname }}</strong>, your account has been successfully created.
+  You're now part of <strong>{{ org_name }}</strong> on InterviewAI. Here's a summary of your account:
+</p>
+
+<!-- Account Card -->
+<div style="
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  border-radius: 14px;
+  padding: 28px;
+  margin: 24px 0;
+  color: white;
+">
+  <p style="font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.6); margin-bottom: 16px;">Your Account</p>
+  <p style="font-size: 22px; font-weight: 700; margin-bottom: 4px;">{{ firstname }} {{ lastname }}</p>
+  <p style="font-size: 14px; color: rgba(255,255,255,0.75); margin-bottom: 20px;">{{ email }}</p>
+
+  <div style="height: 1px; background: rgba(255,255,255,0.15); margin-bottom: 20px;"></div>
+
+  <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+    <tr>
+      <td style="color: rgba(255,255,255,0.6); padding: 4px 0; width: 45%;">Role</td>
+      <td style="color: #ffffff; font-weight: 600; text-transform: capitalize;">{{ role }}</td>
+    </tr>
+    <tr>
+      <td style="color: rgba(255,255,255,0.6); padding: 4px 0;">Mobile</td>
+      <td style="color: #ffffff; font-weight: 600;">+91 {{ mobile }}</td>
+    </tr>
+    <tr>
+      <td style="color: rgba(255,255,255,0.6); padding: 4px 0;">Organization ID</td>
+      <td style="color: #c4b5fd; font-weight: 700; font-family: monospace; font-size: 14px;">{{ org_id }}</td>
+    </tr>
+  </table>
+</div>
+
+<!-- What's Next -->
+<p style="font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 14px;">What you can do now:</p>
+<div style="display: flex; flex-direction: column; gap: 10px;">
+  <div style="display: flex; align-items: flex-start; gap: 12px; padding: 14px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;">
+    <span style="font-size: 18px;">📊</span>
+    <div>
+      <p style="font-size: 14px; font-weight: 600; color: #1e293b;">Access your Dashboard</p>
+      <p style="font-size: 13px; color: #64748b;">View analytics, manage interviews, and track candidate performance.</p>
+    </div>
+  </div>
+  <div style="display: flex; align-items: flex-start; gap: 12px; padding: 14px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;">
+    <span style="font-size: 18px;">🎙️</span>
+    <div>
+      <p style="font-size: 14px; font-weight: 600; color: #1e293b;">Upload Interviews</p>
+      <p style="font-size: 13px; color: #64748b;">Upload audio or video recordings and let AI analyse them instantly.</p>
+    </div>
+  </div>
+  <div style="display: flex; align-items: flex-start; gap: 12px; padding: 14px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;">
+    <span style="font-size: 18px;">👥</span>
+    <div>
+      <p style="font-size: 14px; font-weight: 600; color: #1e293b;">Invite Team Members</p>
+      <p style="font-size: 13px; color: #64748b;">Share your Organization ID <strong style="font-family: monospace; color: #4f46e5;">{{ org_id }}</strong> with colleagues to onboard them.</p>
+    </div>
+  </div>
+</div>
+
+<!-- CTA Button -->
+<div style="text-align: center; margin: 32px 0 8px;">
+  <a href="{{ dashboard_url }}" style="
+    display: inline-block;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 14px 40px;
+    border-radius: 50px;
+    letter-spacing: 0.3px;
+  ">Go to Dashboard →</a>
+</div>
+
+<div class="security-notice">
+  <p>🔒 <strong>Keep your Organization ID safe.</strong> It's the key for your team to join your organization on InterviewAI. Do not share it publicly.</p>
+</div>

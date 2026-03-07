@@ -1,0 +1,70 @@
+<!-- OTP Email Body Content -->
+<!-- This is injected into base.html's {{ body_content }} slot -->
+
+<p class="greeting">Your Login Code 🔐</p>
+<p class="subtext">
+  Hi <strong>{{ firstname }}</strong>, use the code below to complete your sign-in to InterviewAI.
+  This code is valid for <strong>10 minutes</strong>.
+</p>
+
+<!-- OTP Box -->
+<div style="text-align: center; margin: 32px 0;">
+  <div style="
+    display: inline-block;
+    background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+    border: 2px solid #c4b5fd;
+    border-radius: 16px;
+    padding: 28px 48px;
+  ">
+    <p style="font-size: 12px; font-weight: 600; color: #7c3aed; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px;">
+      One-Time Password
+    </p>
+    <div style="
+      font-size: 48px;
+      font-weight: 800;
+      letter-spacing: 12px;
+      color: #4f46e5;
+      font-family: 'Courier New', monospace;
+      line-height: 1;
+    ">{{ otp }}</div>
+    <p style="font-size: 12px; color: #94a3b8; margin-top: 12px;">
+      ⏱ Expires in 10 minutes
+    </p>
+  </div>
+</div>
+
+<!-- Login Details -->
+<div style="background: #f8fafc; border-radius: 10px; padding: 16px 20px; margin-bottom: 24px;">
+  <p style="font-size: 13px; color: #64748b; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Login Attempt Details</p>
+  <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+    <tr>
+      <td style="color: #94a3b8; padding: 4px 0; width: 40%;">Mobile Number</td>
+      <td style="color: #334155; font-weight: 600;">+91 {{ mobile }}</td>
+    </tr>
+    <tr>
+      <td style="color: #94a3b8; padding: 4px 0;">Time</td>
+      <td style="color: #334155; font-weight: 600;">{{ timestamp }}</td>
+    </tr>
+    <tr>
+      <td style="color: #94a3b8; padding: 4px 0;">Organization</td>
+      <td style="color: #334155; font-weight: 600;">{{ org_name }}</td>
+    </tr>
+  </table>
+</div>
+
+<!-- Warning -->
+<div style="
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-left: 3px solid #f97316;
+  border-radius: 8px;
+  padding: 14px 16px;
+">
+  <p style="font-size: 13px; color: #9a3412; line-height: 1.6;">
+    ⚠️ <strong>Didn't request this?</strong> If you didn't try to log in, please ignore this email and your account will remain secure. Consider changing your password if this happens repeatedly.
+  </p>
+</div>
+
+<div class="security-notice">
+  <p>🔒 <strong>Security reminder:</strong> InterviewAI will never ask for your OTP over phone, chat, or email. Never share this code with anyone.</p>
+</div>
