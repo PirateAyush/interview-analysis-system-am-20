@@ -10,7 +10,7 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route 
-          path="/dashboard" 
+          path="/dashboard/*" 
           element={
             <PrivateRoute>
               <Dashboard />
