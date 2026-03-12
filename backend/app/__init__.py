@@ -24,7 +24,7 @@ def create_app(config_name='development'):
     # CORS Configuration
     CORS(app, resources={
         r"/api/*": {
-            "origins": ["http://localhost:3000", "http://localhost:3001", "https://am-interview-assessment-ai.vercel.app"],
+            "origins": ["http://localhost:3000", "http://localhost:3001"],
             "allow_headers": ["Content-Type", "Authorization"],
             "expose_headers": ["Content-Type", "Authorization"],
             "supports_credentials": True
