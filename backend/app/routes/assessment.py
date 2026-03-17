@@ -1,6 +1,7 @@
 import requests
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy import func
 from app import db
 from app.models import User, Assessment, AssessmentQuestion
 
@@ -245,3 +246,166 @@ def delete_assessment(assessment_id):
     db.session.commit()
 
     return jsonify({'success': True, 'message': 'Assessment deleted'}), 200
+
+# ── GET /api/assessment/analytics ─────────────────────────────────────────────
+@assessment_bp.route('/analytics', methods=['GET'])
+@jwt_required()
+def analytics():
+    """
+    Returns org-level and per-interviewer analytics for the dashboard.
+
+    Org-level metrics:
+      - total_assessments, avg scores, hire distribution
+      - total tech questions, off-role questions & percentage
+
+    Per-interviewer metrics (same set, grouped by interviewer_name):
+      - sorted by total_assessments desc
+    """
+    current_user_id = get_jwt_identity()
+    user = User.query.get(int(current_user_id))
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    org_id = user.organization_id
+
+    # ── All completed assessments for this org ────────────────────────────────
+    assessments = (
+        Assessment.query
+        .filter_by(organization_id=org_id, status='completed')
+        .all()
+    )
+
+    if not assessments:
+        return jsonify({
+            'organization': _empty_org_stats(),
+            'interviewers': []
+        }), 200
+
+    assessment_ids = [a.id for a in assessments]
+
+    # ── All questions for those assessments ───────────────────────────────────
+    questions = (
+        AssessmentQuestion.query
+        .filter(AssessmentQuestion.assessment_id.in_(assessment_ids))
+        .all()
+    )
+
+    # ── Build org-level stats ─────────────────────────────────────────────────
+    org_stats = _compute_stats(assessments, questions)
+
+    # ── Build per-interviewer stats ───────────────────────────────────────────
+    # Group assessments by interviewer name
+    interviewer_map = {}
+    for a in assessments:
+        name = a.interviewer_name or 'Unknown'
+        interviewer_map.setdefault(name, []).append(a)
+
+    # Map questions by assessment_id for quick lookup
+    q_by_assessment = {}
+    for q in questions:
+        q_by_assessment.setdefault(q.assessment_id, []).append(q)
+
+    interviewers = []
+    for name, iv_assessments in interviewer_map.items():
+        iv_ids = {a.id for a in iv_assessments}
+        iv_questions = [q for q in questions if q.assessment_id in iv_ids]
+        stats = _compute_stats(iv_assessments, iv_questions)
+        stats['interviewer_name'] = name
+        interviewers.append(stats)
+
+    # Sort by most assessments first
+    interviewers.sort(key=lambda x: x['total_assessments'], reverse=True)
+
+    return jsonify({
+        'organization': org_stats,
+        'interviewers': interviewers
+    }), 200
+
+
+def _empty_org_stats():
+    return {
+        'total_assessments': 0,
+        'avg_candidate_score': None,
+        'avg_interviewer_score': None,
+        'avg_fairness_score': None,
+        'hire_distribution': {'Hire': 0, 'Maybe': 0, 'No Hire': 0, 'Inconclusive': 0},
+        'hire_rate_pct': None,
+        'total_tech_questions': 0,
+        'off_role_questions': 0,
+        'off_role_pct': None,
+        'avg_questions_per_interview': None,
+        'level_distribution': {'Junior': 0, 'Mid': 0, 'Senior': 0},
+        'domain_distribution': {},
+    }
+
+
+def _compute_stats(assessments, questions):
+    """
+    Given a list of Assessment objects and their AssessmentQuestion objects,
+    return a unified stats dict used for both org-level and interviewer-level analytics.
+    """
+    total = len(assessments)
+
+    # Score averages (skip None values)
+    cand_scores = [a.candidate_score for a in assessments if a.candidate_score is not None]
+    iv_scores   = [a.interviewer_score for a in assessments if a.interviewer_score is not None]
+    fair_scores = [a.fairness_score for a in assessments if a.fairness_score is not None]
+
+    avg_cand = round(sum(cand_scores) / len(cand_scores), 1) if cand_scores else None
+    avg_iv   = round(sum(iv_scores)   / len(iv_scores),   1) if iv_scores   else None
+    avg_fair = round(sum(fair_scores) / len(fair_scores), 1) if fair_scores else None
+
+    # Hire distribution
+    hire_dist = {'Hire': 0, 'Maybe': 0, 'No Hire': 0, 'Inconclusive': 0}
+    for a in assessments:
+        rec = a.hire_recommendation or ''
+        if 'Hire' == rec:
+            hire_dist['Hire'] += 1
+        elif 'Maybe' == rec:
+            hire_dist['Maybe'] += 1
+        elif 'No Hire' == rec:
+            hire_dist['No Hire'] += 1
+        else:
+            hire_dist['Inconclusive'] += 1
+
+    hire_rate_pct = (
+        round((hire_dist['Hire'] / total) * 100, 1) if total else None
+    )
+
+    # Question stats
+    tech_qs    = [q for q in questions if q.is_technical]
+    offrole_qs = [q for q in tech_qs   if not q.is_relevant]
+
+    total_tech   = len(tech_qs)
+    total_off    = len(offrole_qs)
+    off_role_pct = round((total_off / total_tech) * 100, 1) if total_tech else None
+
+    avg_qs_per   = round(total_tech / total, 1) if total else None
+
+    # Candidate level distribution
+    level_dist = {'Junior': 0, 'Mid': 0, 'Senior': 0}
+    for a in assessments:
+        lvl = a.candidate_level or ''
+        if lvl in level_dist:
+            level_dist[lvl] += 1
+
+    # Domain distribution (from tech questions)
+    domain_dist = {}
+    for q in tech_qs:
+        d = q.domain or 'Unknown'
+        domain_dist[d] = domain_dist.get(d, 0) + 1
+
+    return {
+        'total_assessments':      total,
+        'avg_candidate_score':    avg_cand,
+        'avg_interviewer_score':  avg_iv,
+        'avg_fairness_score':     avg_fair,
+        'hire_distribution':      hire_dist,
+        'hire_rate_pct':          hire_rate_pct,
+        'total_tech_questions':   total_tech,
+        'off_role_questions':     total_off,
+        'off_role_pct':           off_role_pct,
+        'avg_questions_per_interview': avg_qs_per,
+        'level_distribution':     level_dist,
+        'domain_distribution':    domain_dist,
+    }

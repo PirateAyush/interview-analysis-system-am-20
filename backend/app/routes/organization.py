@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app import db, bcrypt
-from app.models import Organization, User
+from app.models import Organization, User, Assessment
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 
 org_bp = Blueprint('organization', __name__)
@@ -152,5 +153,100 @@ def list_organizations():
         return jsonify({
             'organizations': [org.to_dict() for org in orgs]
         }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ── GET /api/organization/members ─────────────────────────────────────────────
+@org_bp.route('/members', methods=['GET'])
+@jwt_required()
+def list_members():
+    """
+    Returns all users in the current user's organization.
+
+    Each member includes:
+      - Full user details (id, name, email, mobile, type, status, created_at)
+      - assessment_count: how many assessments they have submitted (created_by)
+
+    Query params:
+      role   – filter by type: admin | hr | interviewer
+      status – filter by status: active | inactive | suspended
+      search – search by name or email (case-insensitive)
+    """
+    try:
+        current_user_id = get_jwt_identity()
+        current_user = User.query.get(int(current_user_id))
+
+        if not current_user:
+            return jsonify({'error': 'User not found'}), 404
+
+        org_id = current_user.organization_id
+
+        # ── Base query ────────────────────────────────────────────────────────
+        query = User.query.filter_by(organization_id=org_id)
+
+        # ── Optional filters ──────────────────────────────────────────────────
+        role   = request.args.get('role')
+        status = request.args.get('status')
+        search = request.args.get('search', '').strip().lower()
+
+        if role and role in ('admin', 'hr', 'interviewer'):
+            query = query.filter_by(type=role)
+
+        if status and status in ('active', 'inactive', 'suspended'):
+            query = query.filter_by(status=status)
+
+        # Sort: admins first, then hr, then interviewer; then alphabetical
+        from sqlalchemy import case
+        role_order = case(
+            (User.type == 'admin',       1),
+            (User.type == 'hr',          2),
+            (User.type == 'interviewer', 3),
+            else_=4
+        )
+        users = query.order_by(role_order, User.firstname, User.lastname).all()
+
+        # ── Apply name/email search (post-query, simple) ───────────────────
+        if search:
+            users = [
+                u for u in users
+                if search in u.get_full_name().lower()
+                or search in u.email.lower()
+            ]
+
+        # ── Assessment count per user (created_by) ────────────────────────
+        from sqlalchemy import func
+        counts_raw = (
+            db.session.query(Assessment.created_by, func.count(Assessment.id))
+            .filter(Assessment.organization_id == org_id)
+            .group_by(Assessment.created_by)
+            .all()
+        )
+        count_map = {user_id: cnt for user_id, cnt in counts_raw}
+
+        # ── Build response ────────────────────────────────────────────────
+        members = []
+        for u in users:
+            d = u.to_dict()
+            d['assessment_count'] = count_map.get(u.id, 0)
+            d['is_current_user']  = (u.id == int(current_user_id))
+            members.append(d)
+
+        # ── Summary stats (always over the whole org, not filtered) ───────
+        all_users = User.query.filter_by(organization_id=org_id).all()
+        summary = {
+            'total':       len(all_users),
+            'admin':       sum(1 for u in all_users if u.type == 'admin'),
+            'hr':          sum(1 for u in all_users if u.type == 'hr'),
+            'interviewer': sum(1 for u in all_users if u.type == 'interviewer'),
+            'active':      sum(1 for u in all_users if u.status == 'active'),
+            'inactive':    sum(1 for u in all_users if u.status != 'active'),
+        }
+
+        return jsonify({
+            'members': members,
+            'summary': summary,
+            'filtered_count': len(members),
+        }), 200
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500

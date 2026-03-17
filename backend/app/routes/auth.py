@@ -337,9 +337,17 @@ def get_current_user():
         if not user:
             return jsonify({'error': 'User not found'}), 404
 
+        org = Organization.query.filter_by(organization_id=user.organization_id).first()
+        org_dict = org.to_dict() if org else None
+        if org_dict:
+            org_dict['member_count'] = User.query.filter_by(
+                organization_id=user.organization_id, status='active'
+            ).count()
+
         return jsonify({
             'success': True,
-            'user': user.to_dict()
+            'user': user.to_dict(),
+            'organization': org_dict
         }), 200
 
     except Exception as e:

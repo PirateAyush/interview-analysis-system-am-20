@@ -25,9 +25,14 @@ apiClient.interceptors.request.use(
 
 // ── Organization APIs ─────────────────────────────────────────────────────────
 export const organizationAPI = {
-  create: (data) => apiClient.post('/organization/create', data),
-  verify: (orgId) => apiClient.get(`/organization/verify/${orgId}`),
-  list:   ()      => apiClient.get('/organization/list'),
+  create:  (data)  => apiClient.post('/organization/create', data),
+  verify:  (orgId) => apiClient.get(`/organization/verify/${orgId}`),
+  list:    ()      => apiClient.get('/organization/list'),
+  /**
+   * Fetch all members of the current user's organization.
+   * @param {object} params – optional { role, status, search }
+   */
+  members: (params = {}) => apiClient.get('/organization/members', { params }),
 };
 
 // ── Auth APIs ─────────────────────────────────────────────────────────────────
@@ -86,6 +91,11 @@ export const assessmentAPI = {
    * @param {number} id - assessment ID
    */
   delete: (id) => apiClient.delete(`/assessment/${id}`),
+
+  /**
+   * Fetch org-level and per-interviewer analytics.
+   */
+  analytics: () => apiClient.get('/assessment/analytics'),
 };
 
 export default apiClient;

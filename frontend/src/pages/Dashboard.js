@@ -8,8 +8,9 @@ import Assessment from './dashboard/Assessment';
 import Settings from './dashboard/Settings';
 
 const Dashboard = () => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser]             = useState(null);
+  const [organization, setOrg]      = useState(null);
+  const [loading, setLoading]       = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -21,11 +22,11 @@ const Dashboard = () => {
       const response = await authAPI.getCurrentUser();
       if (response.data.success) {
         setUser(response.data.user);
+        setOrg(response.data.organization || null);
         localStorage.setItem('user', JSON.stringify(response.data.user));
       }
     } catch (error) {
       console.error('Failed to fetch user data:', error);
-      // If token is invalid, redirect to login
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       navigate('/');
@@ -58,8 +59,8 @@ const Dashboard = () => {
   return (
     <DashboardLayout user={user}>
       <Routes>
-        <Route index element={<DashboardHome user={user} />} />
-        <Route path="team"       element={<TeamMembers user={user} />} />
+        <Route index element={<DashboardHome user={user} organization={organization} />} />
+        <Route path="team"       element={<TeamMembers user={user} organization={organization} />} />
         <Route path="assessment" element={<Assessment user={user} />} />
         <Route path="settings"   element={<Settings user={user} />} />
       </Routes>
